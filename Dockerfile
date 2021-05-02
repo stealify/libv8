@@ -1,5 +1,8 @@
 FROM ghcr.io/dockerimages/v8-build:main
 WORKDIR /build/v8
+RUN git checkout branch-heads/9.1
+RUN cat ./COMMIT
+RUN gclient sync
 RUN ./build/install-build-deps.sh --no-syms --no-chromeos-fonts --no-arm --no-nacl --no-backwards-compatible
 RUN ./tools/dev/v8gen.py \
 	x64.release \
@@ -9,7 +12,7 @@ RUN ./tools/dev/v8gen.py \
 	v8_target_cpu=\"x64\" \
 	v8_use_external_startup_data=false \
 	v8_enable_future=true \
-	is_official_build=true \
+	is_official_build=false \
 	is_component_build=false \
 	is_cfi=false \
 	is_asan=false \
