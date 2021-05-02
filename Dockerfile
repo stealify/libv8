@@ -1,17 +1,5 @@
-FROM debian:stretch-slim
-
-WORKDIR /build
-RUN apt update && apt upgrade -y && apt install -y git curl python lsb-release sudo
-RUN git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git
-ENV PATH="/build/depot_tools:${PATH}"
-RUN gclient
-RUN fetch v8
+FROM ghcr.io/dockerimages/v8-build:main
 WORKDIR /build/v8
-RUN git checkout branch-heads/8.8
-RUN git status -bsuno
-RUN git status -bsuno > COMMIT
-RUN exit 1
-RUN gclient sync
 RUN ./build/install-build-deps.sh --no-syms --no-chromeos-fonts --no-arm --no-nacl --no-backwards-compatible
 RUN ./tools/dev/v8gen.py \
 	x64.release \
