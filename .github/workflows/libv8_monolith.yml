@@ -31,13 +31,23 @@ jobs:
         run: |
           echo "::set-output name=tagname::v8-8.8"
           echo "::set-output name=releasename::Release v8-8.8-linux-amd64"
-          echo docker build -t v8-build .
-          ## copy libs and includes from docker image
+          # v8lib: ## build v8 library
+          docker build -t v8-build .
           mkdir -p deps/v8
-          mkdir -p debian
           docker run -dt --rm --name v8-build v8-build /bin/sh
-          docker cp v8-build:/build/v8/out.gn/x64.release/obj/libv8_monolith.a debian/libv8_monolith.a
+
+          docker cp v8-build:/build/v8/out.gn/x64.release/obj/libv8_monolith.a deps/v8/libv8_monolith.a
           docker cp v8-build:/build/v8/include deps/v8/
+          docker cp v8-build:/build/v8/src deps/v8/
+          docker cp v8-build:/build/v8/out.gn/x64.release/gen deps/v8/
+          ## dist header
+          tar -cv deps/v8/include | gzip --best > libv8-8.8-headers.tar.gz
+          ## dist lib
+          tar -cv deps/v8/libv8_monolith.a deps/v8/include | gzip --best > libv8.tar.gz
+          ## dist src
+          tar -cv deps/v8/gen deps/v8/src | gzip --best > libv8src.tar.gz
+          ls -ahl .
+          docker kill v8-build
           ## Always fail till we have all parts in place
           exit 1
       - name: Create Release
