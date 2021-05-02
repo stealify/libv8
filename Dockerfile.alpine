@@ -58,45 +58,12 @@ RUN PATH=$PATH:/usr/lib/llvm9/bin \
 # bother figuring out). Fortunately we only need it to actually download the source and its dependencies
 # so we can do this in a place with glibc, and then pass the results on to an alpine builder.
 #
-FROM debian:9 as source
-
-# The V8 version we want to use. It's assumed that this will be a version tag, but it's just
-# used as "git commit $V8_VERSION" so anything that git can resolve will work.
-ARG V8_VERSION=8.8
-
-RUN \
-  set -x && \
-  apt-get update && \
-  apt-get install -y \
-    git \
-    curl \
-    python && \
-
-  # Clone depot_tools
-  git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git /tmp/depot_tools && \
-  PATH=$PATH:/tmp/depot_tools && \
-
-  # fetch V8
-  cd /tmp && \
-  fetch v8 && \
-  cd /tmp/v8 && \
-  git checkout branch-heads/${V8_VERSION} && \
-  gclient sync && \
-
-  # cleanup
-  apt-get remove --purge -y \
-    git \
-    curl \
-    python && \
-  apt-get autoremove -y && \
-  rm -rf /var/lib/apt/lists/*
+# FROM FROM ghcr.io/dockerimages/v8-build:main as source
 
 FROM alpine:3.11 as v8
 
 WORKDIR /build/v8
-
-COPY --from=source /tmp/v8 /build/v8
-COPY --from=gn-builder /usr/local/bin/gn /build/v8/buildtools/linux64/gn
+ARG V8_VERSION=8.8
 
 RUN \
   apk add --update \
@@ -112,7 +79,7 @@ RUN \
     python \
     tar \
     xz
-
+COPY --from=ghcr.io/dockerimages/v8-build:main /build/v8 /build/v8
+COPY --from=gn-builder /usr/local/bin/gn /build/v8/buildtools/linux64/gn
 RUN ./tools/dev/v8gen.py x64.release -- target_os=\"linux\" target_cpu=\"x64\" v8_target_cpu=\"x64\" v8_use_external_startup_data=false v8_enable_future=true is_official_build=true is_component_build=false is_cfi=false is_asan=false is_clang=false use_custom_libcxx=false use_sysroot=false use_gold=false treat_warnings_as_errors=false is_desktop_linux=false v8_enable_i18n_support=false symbol_level=0 v8_static_library=true v8_monolithic=true proprietary_codecs=false toolkit_views=false use_aura=false use_dbus=false use_gio=false use_glib=false use_ozone=false use_udev=false clang_use_chrome_plugins=false v8_deprecation_warnings=false v8_enable_gdbjit=false v8_imminent_deprecation_warnings=false v8_untrusted_code_mitigations=false v8_enable_pointer_compression=true
-
 RUN ninja v8_monolith -C out.gn/x64.release/ -j $(getconf _NPROCESSORS_ONLN)
